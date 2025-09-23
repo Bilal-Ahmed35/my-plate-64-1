@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Fresh Food-Inspired Color System */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    /* Vibrant primary - Fresh orange */
+    --primary: 29 87% 58%;
+    --primary-foreground: 210 40% 98%;
+    --primary-light: 29 87% 68%;
+    --primary-glow: 29 87% 75%;
+
+    /* Natural secondary - Fresh green */
+    --secondary: 120 45% 52%;
+    --secondary-foreground: 210 40% 98%;
+    --secondary-warm: 120 55% 42%;
+    --secondary-rich: 120 65% 32%;
+
+    /* Soft muted tones */
+    --muted: 210 40% 98%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Bright accent - Berry purple */
+    --accent: 315 65% 58%;
+    --accent-foreground: 210 40% 98%;
+    --accent-bright: 315 75% 48%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 45% 15%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 29 87% 58%;
+
+    --radius: 0.75rem;
+
+    /* Vibrant food gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(29 87% 58%), hsl(29 97% 48%));
+    --gradient-hero: linear-gradient(135deg, hsl(29 87% 58%) 0%, hsl(120 45% 52%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(210 40% 98%) 100%);
+    --gradient-fresh: linear-gradient(120deg, hsl(120 55% 42%) 0%, hsl(29 87% 68%) 100%);
+    
+    /* Vibrant shadows */
+    --shadow-elegant: 0 10px 30px -10px hsl(29 87% 58% / 0.2);
+    --shadow-card: 0 4px 20px -2px hsl(29 87% 58% / 0.12);
+    --shadow-premium: 0 20px 40px -12px hsl(29 87% 58% / 0.25);
+    --shadow-glow: 0 0 40px hsl(29 87% 75% / 0.3);
+    
+    /* Smooth transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 29 87% 68%;
+    --primary-foreground: 240 10% 3.9%;
+
+    --secondary: 120 45% 62%;
+    --secondary-foreground: 240 10% 3.9%;
+
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+
+    --accent: 315 65% 68%;
+    --accent-foreground: 240 10% 3.9%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 29 87% 68%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+/* Print styles for diet plans */
+@media print {
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+  
+  .container {
+    max-width: none !important;
+  }
+}
