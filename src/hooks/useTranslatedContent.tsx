@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useMemo } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   translationService,

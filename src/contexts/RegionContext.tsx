@@ -1,48 +1,3 @@
-// import React, { createContext, useContext, useState, ReactNode } from 'react';
-
-// export type Region = 'global' | 'asian' | 'mediterranean' | 'american' | 'indian' | 'middle_eastern' | 'european' | 'latin_american';
-
-// interface RegionContextType {
-//   region: Region;
-//   setRegion: (region: Region) => void;
-//   getRegionName: (region: Region) => string;
-// }
-
-// const RegionContext = createContext<RegionContextType | undefined>(undefined);
-
-// const regionNames = {
-//   global: 'Global',
-//   asian: 'Asian',
-//   mediterranean: 'Mediterranean',
-//   american: 'American',
-//   indian: 'Indian',
-//   middle_eastern: 'Middle Eastern',
-//   european: 'European',
-//   latin_american: 'Latin American'
-// };
-
-// export const RegionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-//   const [region, setRegion] = useState<Region>('global');
-
-//   const getRegionName = (region: Region): string => {
-//     return regionNames[region];
-//   };
-
-//   return (
-//     <RegionContext.Provider value={{ region, setRegion, getRegionName }}>
-//       {children}
-//     </RegionContext.Provider>
-//   );
-// };
-
-// export const useRegion = () => {
-//   const context = useContext(RegionContext);
-//   if (context === undefined) {
-//     throw new Error('useRegion must be used within a RegionProvider');
-//   }
-//   return context;
-// };
-
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type Region =
@@ -59,7 +14,9 @@ export type Region =
   | "african"
   | "nordic"
   | "caribbean"
-  | "oceanian";
+  | "oceanian"
+  | "scandinavian" // 👈 added
+  | "eastern_european"; // 👈 added
 
 interface RegionContextType {
   region: Region;
