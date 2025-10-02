@@ -1,7 +1,8 @@
 export class LibreTranslateConfig {
   static getConfig() {
+    // Prioritize Docker instance URL from environment
     const baseUrl =
-      import.meta.env.VITE_LIBRETRANSLATE_URL || "https://libretranslate.de";
+      import.meta.env.VITE_LIBRETRANSLATE_URL || "http://localhost:5001";
     const apiKey = import.meta.env.VITE_LIBRETRANSLATE_API_KEY;
 
     return {
@@ -35,7 +36,15 @@ export class LibreTranslateConfig {
         body: JSON.stringify(requestBody),
       });
 
-      return response.ok;
+      if (!response.ok) {
+        console.error(
+          `Connection test failed: ${response.status} ${response.statusText}`
+        );
+        return false;
+      }
+
+      const data = await response.json();
+      return !!data.translatedText;
     } catch (error) {
       console.error("LibreTranslate connection test failed:", error);
       return false;
@@ -63,7 +72,7 @@ export class LibreTranslateConfig {
     } catch (error) {
       console.error("Failed to get supported languages:", error);
       // Return fallback supported languages
-      return ["en", "es", "fr", "de", "it", "ar", "zh", "ja"];
+      return ["en", "es", "fr", "de", "it", "ar", "zh", "ja", "ur"];
     }
   }
 
@@ -80,8 +89,8 @@ export class LibreTranslateRateLimit {
   private static requestQueue: Array<() => void> = [];
   private static isProcessing = false;
 
-  // Add delay between requests to avoid overwhelming free instances
-  static async throttleRequest(minInterval = 200): Promise<void> {
+  // For self-hosted instances, we can be more aggressive with requests
+  static async throttleRequest(minInterval = 50): Promise<void> {
     return new Promise((resolve) => {
       const now = Date.now();
       const timeSinceLastRequest = now - this.lastRequest;
@@ -166,61 +175,32 @@ export class LibreTranslateError extends Error {
   }
 }
 
-// LibreTranslate instance recommendations
-export const LIBRETRANSLATE_INSTANCES = {
-  // Free public instances (no API key required)
-  public: [
-    {
-      name: "LibreTranslate.de",
-      url: "https://libretranslate.de",
-      requiresAuth: false,
-      rateLimit: "Moderate",
-      reliability: "High",
-    },
-    {
-      name: "LibreTranslate.com (Free Tier)",
-      url: "https://libretranslate.com",
-      requiresAuth: false,
-      rateLimit: "Limited",
-      reliability: "High",
-    },
-  ],
-
-  // Paid instances (API key required)
-  paid: [
-    {
-      name: "LibreTranslate.com (Premium)",
-      url: "https://libretranslate.com",
-      requiresAuth: true,
-      rateLimit: "High",
-      reliability: "Very High",
-    },
-  ],
-
-  // Self-hosted options
-  selfHosted: {
-    docker: "docker run -ti --rm -p 5000:5000 libretranslate/libretranslate",
-    github: "https://github.com/LibreTranslate/LibreTranslate",
-  },
-};
-
 // Development helper to test different instances
 export async function testLibreTranslateInstances() {
-  const instances = ["https://libretranslate.de", "https://libretranslate.com"];
+  const config = LibreTranslateConfig.getConfig();
+  const instances = [config.baseUrl];
+
+  console.log("Testing LibreTranslate instances...");
 
   const results = await Promise.allSettled(
     instances.map(async (url) => {
       const startTime = Date.now();
       try {
+        const requestBody: any = {
+          q: "Hello world",
+          source: "en",
+          target: "es",
+          format: "text",
+        };
+
+        if (config.apiKey) {
+          requestBody.api_key = config.apiKey;
+        }
+
         const response = await fetch(`${url}/translate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            q: "Hello world",
-            source: "en",
-            target: "es",
-            format: "text",
-          }),
+          body: JSON.stringify(requestBody),
         });
 
         const responseTime = Date.now() - startTime;
@@ -229,14 +209,14 @@ export async function testLibreTranslateInstances() {
         return {
           url,
           status: "success",
-          responseTime,
+          responseTime: `${responseTime}ms`,
           translation: data.translatedText,
         };
-      } catch (error) {
+      } catch (error: any) {
         return {
           url,
           status: "failed",
-          responseTime: Date.now() - startTime,
+          responseTime: `${Date.now() - startTime}ms`,
           error: error.message,
         };
       }

@@ -1,6 +1,7 @@
 import { Language } from "@/contexts/LanguageContext";
+import { LibreTranslateRateLimit } from "./LibreTranslateConfig";
 
-// Translation service for handling Spoonacular API data
+// Translation service for handling all translation needs
 export class TranslationService {
   private static instance: TranslationService;
   private cache = new Map<string, string>();
@@ -21,11 +22,35 @@ export class TranslationService {
       de: "de",
       it: "it",
       ar: "ar",
-      zh: "zh-CN",
+      zh: "zh",
       ja: "ja",
       ur: "ur",
     };
     return languageCodeMap[language] || "en";
+  }
+
+  // Check if language is supported before translating
+  private async isLanguageAvailable(targetCode: string): Promise<boolean> {
+    try {
+      const baseUrl =
+        import.meta.env.VITE_LIBRETRANSLATE_URL || "http://localhost:5000";
+      const apiKey = import.meta.env.VITE_LIBRETRANSLATE_API_KEY;
+
+      const url = new URL(`${baseUrl}/languages`);
+      if (apiKey) {
+        url.searchParams.append("api_key", apiKey);
+      }
+
+      const response = await fetch(url.toString());
+      if (!response.ok) return false;
+
+      const languages = await response.json();
+      const availableCodes = languages.map((lang: any) => lang.code);
+      return availableCodes.includes(targetCode);
+    } catch (error) {
+      console.warn("Could not check available languages:", error);
+      return false;
+    }
   }
 
   private async translateWithLibreTranslate(
@@ -34,7 +59,7 @@ export class TranslationService {
   ): Promise<string> {
     const apiKey = import.meta.env.VITE_LIBRETRANSLATE_API_KEY;
     const baseUrl =
-      import.meta.env.VITE_LIBRETRANSLATE_URL || "https://libretranslate.de";
+      import.meta.env.VITE_LIBRETRANSLATE_URL || "http://localhost:5000";
 
     try {
       const requestBody: any = {
@@ -44,7 +69,7 @@ export class TranslationService {
         format: "text",
       };
 
-      // Add API key if provided (some LibreTranslate instances require it)
+      // Add API key if provided
       if (apiKey) {
         requestBody.api_key = apiKey;
       }
@@ -67,7 +92,7 @@ export class TranslationService {
       }
 
       const data = await response.json();
-      return data.translatedText;
+      return data.translatedText || text;
     } catch (error) {
       console.error("LibreTranslate API error:", error);
       throw error;
@@ -90,9 +115,10 @@ export class TranslationService {
 
     try {
       this.isTranslating = true;
-      const translatedText = await this.translateWithLibreTranslate(
-        text,
-        targetCode
+
+      // Use rate limiting for public instances
+      const translatedText = await LibreTranslateRateLimit.queueRequest(() =>
+        this.translateWithLibreTranslate(text, targetCode)
       );
 
       // Cache the translation
@@ -105,20 +131,6 @@ export class TranslationService {
     } finally {
       this.isTranslating = false;
     }
-  }
-
-  async translateMultipleTexts(
-    texts: string[],
-    targetLanguage: Language
-  ): Promise<string[]> {
-    if (targetLanguage === "en") {
-      return texts;
-    }
-
-    const promises = texts.map((text) =>
-      this.translateText(text, targetLanguage)
-    );
-    return Promise.all(promises);
   }
 
   // Batch translate for better performance
@@ -139,8 +151,10 @@ export class TranslationService {
       const cacheKey = `${text}:${targetCode}`;
       if (this.cache.has(cacheKey)) {
         results[index] = this.cache.get(cacheKey)!;
-      } else {
+      } else if (text?.trim()) {
         uncachedTexts.push({ index, text });
+      } else {
+        results[index] = text;
       }
     });
 
@@ -151,53 +165,36 @@ export class TranslationService {
 
     try {
       this.isTranslating = true;
-      const apiKey = import.meta.env.VITE_LIBRETRANSLATE_API_KEY;
-      const baseUrl =
-        import.meta.env.VITE_LIBRETRANSLATE_URL || "https://libretranslate.de";
 
-      if (uncachedTexts.length === 1) {
-        // For single text, use regular translate method
-        const { index, text } = uncachedTexts[0];
-        const translatedText = await this.translateWithLibreTranslate(
-          text,
-          targetCode
-        );
-        const cacheKey = `${text}:${targetCode}`;
-        this.cache.set(cacheKey, translatedText);
-        results[index] = translatedText;
-      } else {
-        // LibreTranslate supports batch translation by sending multiple requests
-        // We'll do them in parallel but with a small delay to avoid rate limiting
-        const batchPromises = uncachedTexts.map(
-          async ({ index, text }, batchIndex) => {
-            // Add small delay between requests to avoid overwhelming the server
-            if (batchIndex > 0) {
-              await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-
-            try {
-              const translatedText = await this.translateWithLibreTranslate(
-                text,
-                targetCode
-              );
-              const cacheKey = `${text}:${targetCode}`;
-              this.cache.set(cacheKey, translatedText);
-              return { index, translatedText };
-            } catch (error) {
-              console.error(
-                `Translation failed for text at index ${index}:`,
-                error
-              );
-              return { index, translatedText: text };
-            }
+      // Translate uncached texts with rate limiting
+      const batchPromises = uncachedTexts.map(
+        async ({ index, text }, batchIndex) => {
+          // Add small delay between requests to avoid overwhelming the server
+          if (batchIndex > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
           }
-        );
 
-        const batchResults = await Promise.all(batchPromises);
-        batchResults.forEach(({ index, translatedText }) => {
-          results[index] = translatedText;
-        });
-      }
+          try {
+            const translatedText = await LibreTranslateRateLimit.queueRequest(
+              () => this.translateWithLibreTranslate(text, targetCode)
+            );
+            const cacheKey = `${text}:${targetCode}`;
+            this.cache.set(cacheKey, translatedText);
+            return { index, translatedText };
+          } catch (error) {
+            console.error(
+              `Translation failed for text at index ${index}:`,
+              error
+            );
+            return { index, translatedText: text };
+          }
+        }
+      );
+
+      const batchResults = await Promise.all(batchPromises);
+      batchResults.forEach(({ index, translatedText }) => {
+        results[index] = translatedText;
+      });
 
       return results;
     } catch (error) {
@@ -253,7 +250,7 @@ export async function translateRecipe(
   recipe: TranslatableRecipe,
   targetLanguage: Language
 ): Promise<TranslatableRecipe> {
-  if (targetLanguage === "en") {
+  if (targetLanguage === "en" || !recipe) {
     return recipe;
   }
 
@@ -261,7 +258,7 @@ export async function translateRecipe(
     recipe.title,
     recipe.summary || "",
     ...(recipe.instructions?.map((inst) => inst.step) || []),
-  ].filter(Boolean);
+  ].filter((text) => text?.trim());
 
   try {
     const translations = await translationService.batchTranslate(
@@ -291,11 +288,15 @@ export async function translateDiet(
   diet: TranslatableDiet,
   targetLanguage: Language
 ): Promise<TranslatableDiet> {
-  if (targetLanguage === "en") {
+  if (targetLanguage === "en" || !diet) {
     return diet;
   }
 
-  const textsToTranslate = [diet.name, diet.description, ...diet.benefits];
+  const textsToTranslate = [
+    diet.name,
+    diet.description,
+    ...diet.benefits,
+  ].filter((text) => text?.trim());
 
   try {
     const translations = await translationService.batchTranslate(
@@ -321,7 +322,7 @@ export async function translateDiets(
   diets: TranslatableDiet[],
   targetLanguage: Language
 ): Promise<TranslatableDiet[]> {
-  if (targetLanguage === "en") {
+  if (targetLanguage === "en" || !diets?.length) {
     return diets;
   }
 
